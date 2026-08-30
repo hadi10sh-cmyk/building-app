@@ -2,6 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  
+  // باز کردن باکس‌های مورد نیاز
+  await Hive.openBox('workerBox');
+  await Hive.openBox('inventoryBox');
+  await Hive.openBox('usageBox'); // باکس جدید برای گزارش‌ها
+  
+  runApp(const MyApp());
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
