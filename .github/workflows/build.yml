@@ -1,16 +1,35 @@
-name: Build Android APK
-on: [push, workflow_dispatch]
+name: Build Flutter APK
+
+on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+      
       - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-      - run: flutter pub get
-      - run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
+          flutter-version: '3.x'
+
+      - name: Build App
+        run: |
+          # 1. ساخت یک پروژه جدید برای ایجاد ساختار استاندارد اندروید
+          flutter create my_new_app
+          
+          # 2. کپی کردن فایل‌های شما به داخل ساختار پروژه جدید
+          cp lib/main.dart my_new_app/lib/main.dart
+          cp pubspec.yaml my_new_app/pubspec.yaml
+          
+          # 3. ورود به پوشه پروژه جدید و نصب کتابخانه‌ها
+          cd my_new_app
+          flutter pub get
+          
+          # 4. ساخت فایل APK
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: my-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: release-apk
+          path: my_new_app/build/app/outputs/flutter-apk/app-release.apk
