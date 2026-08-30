@@ -1,137 +1,141 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() => runApp(const ContractorProApp());
+void main() async {
+  // ۱. مقداردهی اولیه Hive برای ذخیره‌سازی دائمی
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await Hive.openBox('inventoryBox');
+  
+  runApp(const BuildingManagerApp());
+}
 
-class ContractorProApp extends StatelessWidget {
-  const ContractorProApp({super.key});
+class BuildingManagerApp extends StatelessWidget {
+  const BuildingManagerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blueGrey, useMaterial3: true),
-      home: const WarehouseScreen(),
+      title: 'مدیریت پیمانکاری',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
+      home: const InventoryScreen(),
     );
   }
 }
 
-// مدل کالای انبار
-class InventoryItem {
-  String name;
-  int quantity;
-  String unit; // مثلا: کیسه، متر مکعب، عدد
-
-  InventoryItem(this.name, this.quantity, this.unit);
-}
-
-class WarehouseScreen extends StatefulWidget {
-  const WarehouseScreen({super.key});
+class InventoryScreen extends StatefulWidget {
+  const InventoryScreen({super.key});
 
   @override
-  State<WarehouseScreen> createState() => _WarehouseScreenState();
+  State<InventoryScreen> createState() => _InventoryScreenState();
 }
 
-class _WarehouseScreenState extends State<WarehouseScreen> {
-  // لیست واقعی انبار (در حافظه موقت)
-  final List<InventoryItem> _inventory = [
-    InventoryItem('سیمان', 50, 'کیسه'),
-    InventoryItem('آجر', 1000, 'عدد'),
-  ];
+class _InventoryScreenState extends State<InventoryScreen> {
+  late Box inventoryBox;
 
-  // کنترلرها برای گرفتن متن از کاربر
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _qtyController = TextEditingController();
-
-  // تابع برای اضافه کردن کالا (ورودی انبار)
-  void _addItem(bool isIncoming) {
-    final String name = _nameController.text;
-    final int? qty = int.tryParse(_qtyController.text);
-
-    if (name.isNotEmpty && qty != null) {
-      setState(() {
-        // پیدا کردن کالای موجود در لیست
-        int existingIndex = _inventory.indexWhere((item) => item.name == name);
-
-        if (existingIndex != -1) {
-          // اگر کالا بود، مقدار را کم یا زیاد کن
-          if (isIncoming) {
-            _inventory[existingIndex].quantity += qty;
-          } else {
-            _inventory[existingIndex].quantity -= qty;
-          }
-        } else {
-          // اگر کالا نبود، کالای جدید بساز
-          _inventory.add(InventoryItem(name, qty, 'واحد'));
-        }
-      });
-      _nameController.clear();
-      _qtyController.clear();
-      Navigator.pop(context); // بستن پنجره فرم
-    }
+  @override
+  void initState() {
+    super.initState();
+    inventoryBox = Hive.box('inventoryBox');
   }
 
-  // نمایش پنجره فرم ثبت کالا
-  void _showForm(bool isIncoming) {
-    showModalBottomSheet(
+  // تابع کمکی برای اضافه یا کم کردن موجودی
+  void _updateStock(String itemName, int amount) {
+    final currentStock = inventoryBox.get(itemName, defaultValue: 0) as int;
+    final newStock = currentStock + amount;
+    
+    if (newStock < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('موجودی نمی‌تواند منفی باشد!')),
+      );
+      return;
+    }
+
+    inventoryBox.put(itemName, newStock);
+    setState(() {}); // به‌روزرسانی صفحه
+  }
+
+  void _showAddDialog() {
+    final nameController = TextEditingController();
+    final qtyController = TextEditingController();
+
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            top: 20, left: 20, right: 20),
-        child: Column(
+      builder: (context) => AlertDialog(
+        title: const Text('ثبت کالا/تراکنش'),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(isIncoming ? 'ورود به انبار' : 'خروج از انبار', 
-                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'نام کالا (مثلا سیمان)')),
-            TextField(controller: _qtyController, decoration: const InputDecoration(labelText: 'مقدار'), keyboardType: TextInputType.number),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _addItem(isIncoming),
-              child: Text(isIncoming ? 'ثبت ورود' : 'ثبت خروج'),
-            ),
-            const SizedBox(height: 20),
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'نام کالا')),
+            TextField(controller: qtyController, decoration: const InputDecoration(labelText: 'تعداد'), keyboardType: TextInputType.number),
           ],
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty && qtyController.text.isNotEmpty) {
+                _updateStock(nameController.text, int.parse(qtyController.text));
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('تایید'),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // خواندن تمام کلیدها (نام کالاها) از Hive
+    final keys = inventoryBox.keys.toList();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('مدیریت انبار پیمانکاری')),
-      body: ListView.builder(
-        itemCount: _inventory.length,
-        itemBuilder: (context, index) {
-          final item = _inventory[index];
-          return ListTile(
-            title: Text(item.name),
-            subtitle: Text('موجودی: ${item.quantity} ${item.unit}'),
-            trailing: Text('${item.quantity}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          );
-        },
+      appBar: AppBar(
+        title: const Text('انبار مدیریت پروژه'),
+        backgroundColor: Colors.blueGrey,
+        foregroundColor: Colors.white,
       ),
-      // دکمه ورود کالا
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'in',
-            onPressed: () => _showForm(true),
-            backgroundColor: Colors.green,
-            child: const Icon(Icons.add_box, color: Colors.white),
-          ),
-          const SizedBox(height: 10),
-          // دکته خروج کالا
-          FloatingActionButton(
-            heroTag: 'out',
-            onPressed: () => _showForm(false),
-            backgroundColor: Colors.red,
-            child: const Icon(Icons.remove_box, color: Colors.white),
-          ),
-        ],
+      body: keys.isEmpty
+          ? const Center(child: Text('هیچ کالایی در انبار نیست.'))
+          : ListView.builder(
+              itemCount: keys.length,
+              itemBuilder: (context, index) {
+                final name = keys[index] as String;
+                final stock = inventoryBox.get(name) as int;
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  child: ListTile(
+                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('موجودی فعلی: $stock'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // دکمه ورود کالا (سبز)
+                        IconButton(
+                          icon: const Icon(Icons.add_circle, color: Colors.green),
+                          onPressed: () => _updateStock(name, 1),
+                        ),
+                        // دکمه خروج کالا (قرمز)
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle, color: Colors.red),
+                          onPressed: () => _updateStock(name, -1),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddDialog,
+        tooltip: 'افزودن کالا جدید',
+        child: const Icon(Icons.add),
       ),
     );
   }
