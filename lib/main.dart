@@ -9,122 +9,127 @@ class ContractorProApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.indigo, useMaterial3: true),
-      home: const HomeScreen(),
+      theme: ThemeData(primarySwatch: Colors.blueGrey, useMaterial3: true),
+      home: const WarehouseScreen(),
     );
   }
 }
 
-// مدل کارگر برای مدیریت بدهی و شغل
-class Worker {
-  final String name;
-  final String job; // مثلا: بنا، لوله‌کش، گچ‌کار
-  final double totalDebt; // بدهی کارگر به پیمانکار
-  final double totalCredit; // بستانکاری کارگر
+// مدل کالای انبار
+class InventoryItem {
+  String name;
+  int quantity;
+  String unit; // مثلا: کیسه، متر مکعب، عدد
 
-  Worker({required this.name, required this.job, this.totalDebt = 0, this.totalCredit = 0});
+  InventoryItem(this.name, this.quantity, this.unit);
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class WarehouseScreen extends StatefulWidget {
+  const WarehouseScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<WarehouseScreen> createState() => _WarehouseScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  // لیست نمونه برای تست
-  final List<Worker> _workers = [
-    Worker(name: 'رضا بنا', job: 'بنا', totalDebt: 500000),
-    Worker(name: 'علی لوله‌کش', job: 'لوله‌کش', totalCredit: 200000),
+class _WarehouseScreenState extends State<WarehouseScreen> {
+  // لیست واقعی انبار (در حافظه موقت)
+  final List<InventoryItem> _inventory = [
+    InventoryItem('سیمان', 50, 'کیسه'),
+    InventoryItem('آجر', 1000, 'عدد'),
   ];
+
+  // کنترلرها برای گرفتن متن از کاربر
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _qtyController = TextEditingController();
+
+  // تابع برای اضافه کردن کالا (ورودی انبار)
+  void _addItem(bool isIncoming) {
+    final String name = _nameController.text;
+    final int? qty = int.tryParse(_qtyController.text);
+
+    if (name.isNotEmpty && qty != null) {
+      setState(() {
+        // پیدا کردن کالای موجود در لیست
+        int existingIndex = _inventory.indexWhere((item) => item.name == name);
+
+        if (existingIndex != -1) {
+          // اگر کالا بود، مقدار را کم یا زیاد کن
+          if (isIncoming) {
+            _inventory[existingIndex].quantity += qty;
+          } else {
+            _inventory[existingIndex].quantity -= qty;
+          }
+        } else {
+          // اگر کالا نبود، کالای جدید بساز
+          _inventory.add(InventoryItem(name, qty, 'واحد'));
+        }
+      });
+      _nameController.clear();
+      _qtyController.clear();
+      Navigator.pop(context); // بستن پنجره فرم
+    }
+  }
+
+  // نمایش پنجره فرم ثبت کالا
+  void _showForm(bool isIncoming) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: 20, left: 20, right: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(isIncoming ? 'ورود به انبار' : 'خروج از انبار', 
+                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'نام کالا (مثلا سیمان)')),
+            TextField(controller: _qtyController, decoration: const InputDecoration(labelText: 'مقدار'), keyboardType: TextInputType.number),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => _addItem(isIncoming),
+              child: Text(isIncoming ? 'ثبت ورود' : 'ثبت خروج'),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('مدیریت هوشمند پیمانکاری'),
-        actions: [
-          IconButton(icon: const Icon(Icons.picture_as_pdf), onPressed: () {
-            // اینجا بعداً کد ساخت PDF را اضافه می‌کنیم
-          }),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildSummaryCard(), // بخش خلاصه وضعیت مالی
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text('لیست کارگران و وضعیت بدهی:', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _workers.length,
-              itemBuilder: (context, index) {
-                final worker = _workers[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  child: ListTile(
-                    leading: CircleAvatar(child: Text(worker.name[0])),
-                    title: Text(worker.name),
-                    subtitle: Text(worker.job),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'بدهی: ${worker.totalDebt} ت',
-                          style: const TextStyle(color: Colors.red, fontSize: 12),
-                        ),
-                        Text(
-                          'بستانکاری: ${worker.totalCredit} ت',
-                          style: const TextStyle(color: Colors.green, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // اینجا فرم اضافه کردن کارگر جدید باز می‌شود
+      appBar: AppBar(title: const Text('مدیریت انبار پیمانکاری')),
+      body: ListView.builder(
+        itemCount: _inventory.length,
+        itemBuilder: (context, index) {
+          final item = _inventory[index];
+          return ListTile(
+            title: Text(item.name),
+            subtitle: Text('موجودی: ${item.quantity} ${item.unit}'),
+            trailing: Text('${item.quantity}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          );
         },
-        child: const Icon(Icons.person_add),
       ),
-    );
-  }
-
-  Widget _buildSummaryCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.indigo.shade50,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: const Column(
+      // دکمه ورود کالا
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Text('خلاصه وضعیت پروژه', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('کل مصالح خریده شده:'),
-              Text('۱۲,۰۰۰,۰۰۰ ت', style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
+          FloatingActionButton(
+            heroTag: 'in',
+            onPressed: () => _showForm(true),
+            backgroundColor: Colors.green,
+            child: const Icon(Icons.add_box, color: Colors.white),
           ),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('کل دستمزد پرداختی:'),
-              Text('۸,۵۰۰,۰۰۰ ت', style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
+          const SizedBox(height: 10),
+          // دکته خروج کالا
+          FloatingActionButton(
+            heroTag: 'out',
+            onPressed: () => _showForm(false),
+            backgroundColor: Colors.red,
+            child: const Icon(Icons.remove_box, color: Colors.white),
           ),
         ],
       ),
