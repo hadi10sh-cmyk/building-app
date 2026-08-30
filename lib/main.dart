@@ -1,257 +1,131 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
-void main() {
-  runApp(const BuildingManagerApp());
-}
+void main() => runApp(const ContractorProApp());
 
-class BuildingManagerApp extends StatelessWidget {
-  const BuildingManagerApp({super.key});
+class ContractorProApp extends StatelessWidget {
+  const ContractorProApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'مدیریت کارگاه ساختمانی',
       debugShowCheckedModeBanner: false,
-      // پشتیبانی کامل از زبان فارسی و راست‌چین
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('fa', 'IR')],
-      locale: const Locale('fa', 'IR'),
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.amber[800],
-        fontFamily: 'Vazirmatn', // یا فونت دلخواه شما
-      ),
-      home: const DashboardScreen(),
+      theme: ThemeData(primarySwatch: Colors.indigo, useMaterial3: true),
+      home: const HomeScreen(),
     );
   }
 }
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+// مدل کارگر برای مدیریت بدهی و شغل
+class Worker {
+  final String name;
+  final String job; // مثلا: بنا، لوله‌کش، گچ‌کار
+  final double totalDebt; // بدهی کارگر به پیمانکار
+  final double totalCredit; // بستانکاری کارگر
 
-  @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  Worker({required this.name, required this.job, this.totalDebt = 0, this.totalCredit = 0});
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  int _currentIndex = 0;
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
-  // لیست نمونه نیروها برای نمایش در ظاهر برنامه
-  final List<Map<String, dynamic>> _workers = [
-    {
-      'name': 'استاد رحیم',
-      'role': 'کاشی‌کار',
-      'type': 'متری',
-      'rate': 180000, // هر متر مربع
-      'workDone': 150.0, // متراژ اجرا شده
-      'paid': 20000000,
-    },
-    {
-      'name': 'علی مرادی',
-      'role': 'کارگر ساده',
-      'type': 'روزمزد',
-      'rate': 650000, // روزانه
-      'workDone': 22.0, // تعداد روز
-      'paid': 10000000,
-    },
-  ];
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-  // لیست نمونه مصالح انبار
-  final List<Map<String, dynamic>> _materials = [
-    {'name': 'سیمان تیپ ۲', 'unit': 'کیسه', 'stock': 140, 'price': 85000},
-    {'name': 'گچ سفید سمنان', 'unit': 'کیسه', 'stock': 65, 'price': 48000},
-    {'name': 'کاشی ۶۰×۱۲۰ پرسلان', 'unit': 'مترمربع', 'stock': 220, 'price': 390000},
+class _HomeScreenState extends State<HomeScreen> {
+  // لیست نمونه برای تست
+  final List<Worker> _workers = [
+    Worker(name: 'رضا بنا', job: 'بنا', totalDebt: 500000),
+    Worker(name: 'علی لوله‌کش', job: 'لوله‌کش', totalCredit: 200000),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('سامانه هوشمند مدیریت پروژه'),
-        centerTitle: true,
-        backgroundColor: Colors.amber[700],
-        foregroundColor: Colors.white,
-      ),
-      body: _currentIndex == 0 ? _buildWorkersView() : _buildMaterialsView(),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.people_alt_outlined),
-            selectedIcon: Icon(Icons.people_alt),
-            label: 'نیروها و دستمزد',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2),
-            label: 'انبار و مصالح',
-          ),
+        title: const Text('مدیریت هوشمند پیمانکاری'),
+        actions: [
+          IconButton(icon: const Icon(Icons.picture_as_pdf), onPressed: () {
+            // اینجا بعداً کد ساخت PDF را اضافه می‌کنیم
+          }),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.amber[800],
-        foregroundColor: Colors.white,
-        onPressed: () {
-          if (_currentIndex == 0) {
-            _showAddWorkerDialog();
-          } else {
-            _showAddMaterialLogDialog();
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: Text(_currentIndex == 0 ? 'ثبت نیرو / کارکرد' : 'ورود / خروج مصالح'),
-      ),
-    );
-  }
-
-  // ویجت لیست استادکاران و کارگران
-  Widget _buildWorkersView() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: _workers.length,
-      itemBuilder: (context, index) {
-        final w = _workers[index];
-        final totalEarned = w['rate'] * w['workDone'];
-        final balance = totalEarned - w['paid'];
-
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${w['name']} (${w['role']})',
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+      body: Column(
+        children: [
+          _buildSummaryCard(), // بخش خلاصه وضعیت مالی
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text('لیست کارگران و وضعیت بدهی:', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _workers.length,
+              itemBuilder: (context, index) {
+                final worker = _workers[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  child: ListTile(
+                    leading: CircleAvatar(child: Text(worker.name[0])),
+                    title: Text(worker.name),
+                    subtitle: Text(worker.job),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'بدهی: ${worker.totalDebt} ت',
+                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                        Text(
+                          'بستانکاری: ${worker.totalCredit} ت',
+                          style: const TextStyle(color: Colors.green, fontSize: 12),
+                        ),
+                      ],
                     ),
-                    Chip(
-                      label: Text(w['type']),
-                      backgroundColor: w['type'] == 'متری' ? Colors.blue[50] : Colors.green[50],
-                    ),
-                  ],
-                ),
-                const Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('نرخ واحد: ${w['rate'].toString()} تومان'),
-                    Text('کارکرد: ${w['workDone']} ${w['type'] == 'متری' ? 'متر' : 'روز'}'),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('کل کارکرد: ${totalEarned.toStringAsFixed(0)} تومان'),
-                    Text('دریافتی: ${w['paid'].toString()} تومان'),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'مانده طلب: ${balance.toStringAsFixed(0)} تومان',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: balance > 0 ? Colors.red[700] : Colors.green[700],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
-        );
-      },
-    );
-  }
-
-  // ویجت موجودی انبار مصالح
-  Widget _buildMaterialsView() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: _materials.length,
-      itemBuilder: (context, index) {
-        final m = _materials[index];
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 10),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.amber[100],
-              child: const Icon(Icons.category, color: Colors.brown),
-            ),
-            title: Text(m['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('آخرین قیمت واحد: ${m['price']} تومان'),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const Text('موجودی انبار:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                Text(
-                  '${m['stock']} ${m['unit']}',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // فرم ثبت کارگر یا ثبت کارکرد جدید
-  void _showAddWorkerDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('ثبت نیروی کار یا کارکرد جدید'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            TextField(decoration: InputDecoration(labelText: 'نام و نام خانوادگی')),
-            TextField(decoration: InputDecoration(labelText: 'تخصص (کاشی‌کار، گچ‌کار و...)')),
-            TextField(
-              decoration: InputDecoration(labelText: 'نرخ دستمزد (روزانه یا متری)'),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('انصراف')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('ثبت')),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // اینجا فرم اضافه کردن کارگر جدید باز می‌شود
+        },
+        child: const Icon(Icons.person_add),
       ),
     );
   }
 
-  // فرم ورود یا خروج مصالح
-  void _showAddMaterialLogDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('ثبت ورود / خروج مصالح'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            TextField(decoration: InputDecoration(labelText: 'نام مصالح (مثلاً سیمان)')),
-            TextField(
-              decoration: InputDecoration(labelText: 'مقدار (تعداد/متراژ/وزن)'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(decoration: InputDecoration(labelText: 'توضیحات (محل مصرف یا نام فروشنده)')),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('انصراف')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('ذخیره')),
+  Widget _buildSummaryCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.indigo.shade50,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: const Column(
+        children: [
+          Text('خلاصه وضعیت پروژه', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Divider(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('کل مصالح خریده شده:'),
+              Text('۱۲,۰۰۰,۰۰۰ ت', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('کل دستمزد پرداختی:'),
+              Text('۸,۵۰۰,۰۰۰ ت', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
         ],
       ),
     );
