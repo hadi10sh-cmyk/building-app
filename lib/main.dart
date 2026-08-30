@@ -1,5 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+
+  // باز کردن باکس‌های اصلی
+  await Hive.openBox('inventoryBox'); // ذخیره کالاها
+  await Hive.openBox('workerBox');     // ذخیره کارگران
+  await Hive.openBox('transactionBox'); // ذخیره گزارش کارکرد و مصرف کالا
+
+  runApp(const BuildingApp());
+}
 
 void main() async {
   // ۱. مقداردهی اولیه Hive برای ذخیره‌سازی دائمی
